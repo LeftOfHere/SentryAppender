@@ -48,6 +48,8 @@
       <HintPath>..\..\..\packages\SharpRaven.1.5.1\lib\net40\SharpRaven.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.XML" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Extra\EnvironmentExtra.cs" />

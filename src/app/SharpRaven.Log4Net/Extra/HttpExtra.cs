@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Reflection;
+using System.Data;
+using Newtonsoft;
+using Newtonsoft.Json;
 
 namespace SharpRaven.Log4Net.Extra
 {
@@ -15,6 +18,7 @@ namespace SharpRaven.Log4Net.Extra
             this.httpContext = httpContext;
             Request = GetRequest();
             Response = GetResponse();
+            Session = GetSession();
         }
 
 
@@ -29,6 +33,7 @@ namespace SharpRaven.Log4Net.Extra
 
         public object Request { get; private set; }
         public object Response { get; private set; }
+        public object Session { get; private set; }
 
 
         private object GetResponse()
@@ -37,7 +42,7 @@ namespace SharpRaven.Log4Net.Extra
             {
                 return new
                 {
-                    Cookies = Convert(x => x.Response.Cookies),
+                    Cookies = Convert(x => x.Response.Cookies, GetValueFromCookieCollection),
                     Headers = Convert(x => x.Response.Headers),
                     ContentEncoding = this.httpContext.Response.ContentEncoding.HeaderName,
                     HeaderEncoding = this.httpContext.Response.HeaderEncoding.HeaderName,
@@ -77,7 +82,7 @@ namespace SharpRaven.Log4Net.Extra
                 {
                     ServerVariables = Convert(x => x.Request.ServerVariables),
                     Form = Convert(x => x.Request.Form),
-                    Cookies = Convert(x => x.Request.Cookies),
+                    Cookies = Convert(x => x.Request.Cookies, GetValueFromCookieCollection),
                     Headers = Convert(x => x.Request.Headers),
                     //Params = Convert(x => x.Request.Params),
                     ContentEncoding = this.httpContext.Request.ContentEncoding.HeaderName,
@@ -121,6 +126,29 @@ namespace SharpRaven.Log4Net.Extra
         }
 
 
+        private object GetSession()
+        {
+            try
+            {
+                if (this.httpContext.Session == null)
+                {
+                    return null;
+                }
+
+                return new
+                {
+                    Contents = GetValueFromSession(this.httpContext.Session)
+                };
+            }
+            catch (Exception exception)
+            {
+                return new
+                {
+                    Exception = exception
+                };
+            }
+        }
+
         private static dynamic GetHttpContext()
         {
             var systemWeb = AppDomain.CurrentDomain
@@ -145,27 +173,28 @@ namespace SharpRaven.Log4Net.Extra
             return currentHttpContextProperty.GetValue(null, null);
         }
 
-
-        private IDictionary<string, string> Convert(Func<dynamic, NameValueCollection> collectionGetter)
+        private IDictionary<string, string> Convert(Func<dynamic, NameObjectCollectionBase> collectionGetter, Func<NameObjectCollectionBase, object, string> valueFromCollectionGetter = null)
         {
             if (this.httpContext == null)
                 return null;
+
+            if (valueFromCollectionGetter == null)
+                valueFromCollectionGetter = (c, key) => ((NameValueCollection)c)[key.ToString()];
 
             IDictionary<string, string> dictionary = new Dictionary<string, string>();
 
             try
             {
-                NameValueCollection collection = collectionGetter.Invoke(this.httpContext);
-                var keys = collection.AllKeys.ToArray();
+                NameObjectCollectionBase collection = collectionGetter.Invoke(this.httpContext);
 
-                foreach (var key in keys)
+                foreach (var key in collection.Keys)
                 {
                     // NOTE: Ignore these keys as they just add duplicate information. [asbjornu]
-                    if (key == "ALL_HTTP" || key == "ALL_RAW")
+                    if (key.ToString() == "ALL_HTTP" || key.ToString() == "ALL_RAW")
                         continue;
 
-                    var value = collection[key];
-                    dictionary.Add(key, value);
+                    var value = valueFromCollectionGetter(collection, key);
+                    dictionary.Add(key.ToString(), value);
                 }
             }
             catch (Exception exception)
@@ -174,6 +203,35 @@ namespace SharpRaven.Log4Net.Extra
             }
 
             return dictionary;
+        }
+
+        private string GetValueFromCookieCollection(NameObjectCollectionBase cookieCollection, object key)
+        {
+            return ((dynamic)cookieCollection)[key.ToString()].Value;
+        }
+
+        private IDictionary<string, object> GetValueFromSession(dynamic session)
+        {
+            var list = new Dictionary<string, object>();
+            list.Add("SessionID", session.SessionID);
+            list.Add("Timeout", session.Timeout);
+            list.Add("LCID", session.LCID);
+
+            foreach (var key in session.Keys)
+            {
+                var value = session[key];
+
+                if (value is DataSet)
+                {
+                    list.Add(key.ToString(), JsonConvert.SerializeObject(value, Formatting.Indented));
+                }
+                else
+                {
+                    list.Add(key.ToString(), value);
+                }
+            }
+
+            return list;
         }
     }
 }
