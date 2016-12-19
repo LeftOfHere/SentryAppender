@@ -21,7 +21,7 @@ using System.Runtime.InteropServices;
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
 [assembly: Guid("cb991214-41eb-463a-bce4-35cff33e9200")]
-
+[assembly: AssemblyVersion("1.2.2.*")]
 #if DEBUG
 [assembly: InternalsVisibleTo("SharpRaven.Log4Net.Tests")]
 #endif

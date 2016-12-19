@@ -26,6 +26,7 @@
 
         try
         {
+            Session["testKey"] = "testValue";
             DivideByZero();
         }
         catch (Exception exception)

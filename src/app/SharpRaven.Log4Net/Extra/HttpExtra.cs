@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Reflection;
+using System.Data;
+using Newtonsoft;
+using Newtonsoft.Json;
 
 namespace SharpRaven.Log4Net.Extra
 {
@@ -15,6 +18,7 @@ namespace SharpRaven.Log4Net.Extra
             this.httpContext = httpContext;
             Request = GetRequest();
             Response = GetResponse();
+            Session = GetSession();
         }
 
 
@@ -29,6 +33,7 @@ namespace SharpRaven.Log4Net.Extra
 
         public object Request { get; private set; }
         public object Response { get; private set; }
+        public object Session { get; private set; }
 
 
         private object GetResponse()
@@ -121,6 +126,29 @@ namespace SharpRaven.Log4Net.Extra
         }
 
 
+        private object GetSession()
+        {
+            try
+            {
+                if (this.httpContext.Session == null)
+                {
+                    return null;
+                }
+
+                return new
+                {
+                    Contents = GetValueFromSession(this.httpContext.Session)
+                };
+            }
+            catch (Exception exception)
+            {
+                return new
+                {
+                    Exception = exception
+                };
+            }
+        }
+
         private static dynamic GetHttpContext()
         {
             var systemWeb = AppDomain.CurrentDomain
@@ -162,7 +190,7 @@ namespace SharpRaven.Log4Net.Extra
                 foreach (var key in collection.Keys)
                 {
                     // NOTE: Ignore these keys as they just add duplicate information. [asbjornu]
-                    if (key == "ALL_HTTP" || key == "ALL_RAW")
+                    if (key.ToString() == "ALL_HTTP" || key.ToString() == "ALL_RAW")
                         continue;
 
                     var value = valueFromCollectionGetter(collection, key);
@@ -180,6 +208,30 @@ namespace SharpRaven.Log4Net.Extra
         private string GetValueFromCookieCollection(NameObjectCollectionBase cookieCollection, object key)
         {
             return ((dynamic)cookieCollection)[key.ToString()].Value;
+        }
+
+        private IDictionary<string, object> GetValueFromSession(dynamic session)
+        {
+            var list = new Dictionary<string, object>();
+            list.Add("SessionID", session.SessionID);
+            list.Add("Timeout", session.Timeout);
+            list.Add("LCID", session.LCID);
+
+            foreach (var key in session.Keys)
+            {
+                var value = session[key];
+
+                if (value is DataSet)
+                {
+                    list.Add(key.ToString(), JsonConvert.SerializeObject(value, Formatting.Indented));
+                }
+                else
+                {
+                    list.Add(key.ToString(), value);
+                }
+            }
+
+            return list;
         }
     }
 }
