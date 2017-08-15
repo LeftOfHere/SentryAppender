@@ -4,7 +4,6 @@ using System.Collections.Specialized;
 using System.Linq;
 using System.Reflection;
 using System.Data;
-using Newtonsoft;
 using Newtonsoft.Json;
 
 namespace SharpRaven.Log4Net.Extra
@@ -25,15 +24,12 @@ namespace SharpRaven.Log4Net.Extra
         public static HttpExtra GetHttpExtra()
         {
             var context = GetHttpContext();
-            if (context == null)
-                return null;
-
-            return new HttpExtra(context);
+            return context == null ? null : new HttpExtra(context);
         }
 
-        public object Request { get; private set; }
-        public object Response { get; private set; }
-        public object Session { get; private set; }
+        public object Request { get; }
+        public object Response { get; }
+        public object Session { get; }
 
 
         private object GetResponse()
@@ -44,17 +40,17 @@ namespace SharpRaven.Log4Net.Extra
                 {
                     Cookies = Convert(x => x.Response.Cookies, GetValueFromCookieCollection),
                     Headers = Convert(x => x.Response.Headers),
-                    ContentEncoding = this.httpContext.Response.ContentEncoding.HeaderName,
-                    HeaderEncoding = this.httpContext.Response.HeaderEncoding.HeaderName,
-                    this.httpContext.Response.ContentType,
-                    this.httpContext.Response.Charset,
-                    this.httpContext.Response.Expires,
-                    this.httpContext.Response.ExpiresAbsolute,
-                    this.httpContext.Response.IsClientConnected,
-                    this.httpContext.Response.IsRequestBeingRedirected,
-                    this.httpContext.Response.RedirectLocation,
-                    this.httpContext.Response.SuppressContent,
-                    this.httpContext.Response.TrySkipIisCustomErrors,
+                    ContentEncoding = httpContext.Response.ContentEncoding.HeaderName,
+                    HeaderEncoding = httpContext.Response.HeaderEncoding.HeaderName,
+                    httpContext.Response.ContentType,
+                    httpContext.Response.Charset,
+                    httpContext.Response.Expires,
+                    httpContext.Response.ExpiresAbsolute,
+                    httpContext.Response.IsClientConnected,
+                    httpContext.Response.IsRequestBeingRedirected,
+                    httpContext.Response.RedirectLocation,
+                    httpContext.Response.SuppressContent,
+                    httpContext.Response.TrySkipIisCustomErrors,
                     Status = new
                     {
                         this.httpContext.Response.Status,
@@ -85,26 +81,26 @@ namespace SharpRaven.Log4Net.Extra
                     Cookies = Convert(x => x.Request.Cookies, GetValueFromCookieCollection),
                     Headers = Convert(x => x.Request.Headers),
                     //Params = Convert(x => x.Request.Params),
-                    ContentEncoding = this.httpContext.Request.ContentEncoding.HeaderName,
-                    this.httpContext.Request.AcceptTypes,
-                    this.httpContext.Request.ApplicationPath,
-                    this.httpContext.Request.ContentType,
-                    this.httpContext.Request.CurrentExecutionFilePath,
-                    this.httpContext.Request.CurrentExecutionFilePathExtension,
-                    this.httpContext.Request.FilePath,
-                    this.httpContext.Request.HttpMethod,
-                    this.httpContext.Request.IsAuthenticated,
-                    this.httpContext.Request.IsLocal,
-                    this.httpContext.Request.IsSecureConnection,
-                    this.httpContext.Request.Path,
-                    this.httpContext.Request.PathInfo,
-                    this.httpContext.Request.PhysicalApplicationPath,
-                    this.httpContext.Request.PhysicalPath,
-                    this.httpContext.Request.QueryString,
-                    this.httpContext.Request.RawUrl,
-                    this.httpContext.Request.TotalBytes,
-                    this.httpContext.Request.Url,
-                    this.httpContext.Request.UserAgent,
+                    ContentEncoding = httpContext.Request.ContentEncoding.HeaderName,
+                    httpContext.Request.AcceptTypes,
+                    httpContext.Request.ApplicationPath,
+                    httpContext.Request.ContentType,
+                    httpContext.Request.CurrentExecutionFilePath,
+                    httpContext.Request.CurrentExecutionFilePathExtension,
+                    httpContext.Request.FilePath,
+                    httpContext.Request.HttpMethod,
+                    httpContext.Request.IsAuthenticated,
+                    httpContext.Request.IsLocal,
+                    httpContext.Request.IsSecureConnection,
+                    httpContext.Request.Path,
+                    httpContext.Request.PathInfo,
+                    httpContext.Request.PhysicalApplicationPath,
+                    httpContext.Request.PhysicalPath,
+                    httpContext.Request.QueryString,
+                    httpContext.Request.RawUrl,
+                    httpContext.Request.TotalBytes,
+                    httpContext.Request.Url,
+                    httpContext.Request.UserAgent,
                     User = new
                     {
                         Languages = this.httpContext.Request.UserLanguages,
@@ -130,14 +126,14 @@ namespace SharpRaven.Log4Net.Extra
         {
             try
             {
-                if (this.httpContext.Session == null)
+                if (httpContext.Session == null)
                 {
                     return null;
                 }
 
                 return new
                 {
-                    Contents = GetValueFromSession(this.httpContext.Session)
+                    Contents = GetValueFromSession(httpContext.Session)
                 };
             }
             catch (Exception exception)
@@ -167,15 +163,12 @@ namespace SharpRaven.Log4Net.Extra
             var currentHttpContextProperty = httpContextType.GetProperty("Current",
                                                                          BindingFlags.Static | BindingFlags.Public);
 
-            if (currentHttpContextProperty == null)
-                return null;
-
-            return currentHttpContextProperty.GetValue(null, null);
+            return currentHttpContextProperty == null ? null : currentHttpContextProperty.GetValue(null, null);
         }
 
         private IDictionary<string, string> Convert(Func<dynamic, NameObjectCollectionBase> collectionGetter, Func<NameObjectCollectionBase, object, string> valueFromCollectionGetter = null)
         {
-            if (this.httpContext == null)
+            if (httpContext == null)
                 return null;
 
             if (valueFromCollectionGetter == null)
@@ -185,7 +178,7 @@ namespace SharpRaven.Log4Net.Extra
 
             try
             {
-                NameObjectCollectionBase collection = collectionGetter.Invoke(this.httpContext);
+                NameObjectCollectionBase collection = collectionGetter.Invoke(httpContext);
 
                 foreach (var key in collection.Keys)
                 {
@@ -205,30 +198,28 @@ namespace SharpRaven.Log4Net.Extra
             return dictionary;
         }
 
-        private string GetValueFromCookieCollection(NameObjectCollectionBase cookieCollection, object key)
+        private static string GetValueFromCookieCollection(NameObjectCollectionBase cookieCollection, object key)
         {
             return ((dynamic)cookieCollection)[key.ToString()].Value;
         }
 
-        private IDictionary<string, object> GetValueFromSession(dynamic session)
+        private static IDictionary<string, object> GetValueFromSession(dynamic session)
         {
-            var list = new Dictionary<string, object>();
-            list.Add("SessionID", session.SessionID);
-            list.Add("Timeout", session.Timeout);
-            list.Add("LCID", session.LCID);
+            var list = new Dictionary<string, object>
+            {
+                { "SessionID", session.SessionID },
+                { "Timeout", session.Timeout },
+                { "LCID", session.LCID }
+            };
 
             foreach (var key in session.Keys)
             {
                 var value = session[key];
 
                 if (value is DataSet)
-                {
                     list.Add(key.ToString(), JsonConvert.SerializeObject(value, Formatting.Indented));
-                }
                 else
-                {
                     list.Add(key.ToString(), value);
-                }
             }
 
             return list;

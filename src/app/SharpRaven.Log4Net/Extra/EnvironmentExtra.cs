@@ -11,11 +11,8 @@ namespace SharpRaven.Log4Net.Extra
             OSVersion = Environment.OSVersion.ToString();
         }
 
-
-        public string MachineName { get; private set; }
-
-        public string Version { get; private set; }
-
-        public string OSVersion { get; private set; }
+        public string MachineName { get; }
+        public string Version { get; }
+        public string OSVersion { get; }
     }
 }

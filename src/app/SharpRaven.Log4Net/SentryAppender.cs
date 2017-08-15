@@ -66,19 +66,30 @@ namespace SharpRaven.Log4Net
 
             if (exception != null)
             {
-                ravenClient.CaptureException(exception, null, level, tags: tags, extra: extra);
+                var se = new SentryEvent(exception)
+                {
+                    Extra = extra,
+                    Level = level,
+                    Tags = tags
+                };
+                ravenClient.Capture(se);
             }
             else
             {
                 var message = loggingEvent.RenderedMessage;
 
-                if (message != null)
+                if (message == null)
+                    return;
+
+                var se = new SentryEvent(message)
                 {
-                    ravenClient.CaptureMessage(message, level, tags, extra);
-                }
+                    Extra = extra,
+                    Level = level,
+                    Tags = tags
+                };
+                ravenClient.Capture(se);
             }
         }
-
 
         internal static ErrorLevel Translate(Level level)
         {
@@ -86,18 +97,13 @@ namespace SharpRaven.Log4Net
             {
                 case "WARN":
                     return ErrorLevel.Warning;
-
                 case "NOTICE":
                     return ErrorLevel.Info;
+                default:
+                    ErrorLevel errorLevel;
+                    return !Enum.TryParse(level.DisplayName, true, out errorLevel) ? ErrorLevel.Error : errorLevel;
             }
-
-            ErrorLevel errorLevel;
-
-            return !Enum.TryParse(level.DisplayName, true, out errorLevel)
-                       ? ErrorLevel.Error
-                       : errorLevel;
         }
-
 
         protected override void Append(LoggingEvent[] loggingEvents)
         {

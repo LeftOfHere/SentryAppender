@@ -24,10 +24,10 @@ namespace SharpRaven.Log4Net.Tests
         }
 
 
-        [TestFixtureSetUp]
+        [OneTimeSetUp]
         public void TestFixtureSetUp()
         {
-            this.log = LogManager.GetLogger(GetType());
+            log = LogManager.GetLogger(GetType());
         }
 
 
@@ -36,7 +36,7 @@ namespace SharpRaven.Log4Net.Tests
             "Only run this test if you're going to check for the logged error in Sentry or debug the SentryAppender.")]
         public void ErrorFormatWithMessage_MessageIsLogged()
         {
-            this.log.ErrorFormat("This is a {0} message.", "test");
+            log.ErrorFormat("This is a {0} message.", "test");
         }
 
 
@@ -46,7 +46,7 @@ namespace SharpRaven.Log4Net.Tests
         public void ErrorWithException_ExceptionIsLogged()
         {
             var exception = Assert.Throws<DivideByZeroException>(() => DivideByZero());
-            this.log.Error("This is a test exception", exception);
+            log.Error("This is a test exception", exception);
         }
 
 
@@ -55,7 +55,7 @@ namespace SharpRaven.Log4Net.Tests
             "Only run this test if you're going to check for the logged error in Sentry or debug the SentryAppender.")]
         public void ErrorWithMessage_MessageIsLogged()
         {
-            this.log.Error("This is a test message.");
+            log.Error("This is a test message.");
         }
     }
 }
